@@ -1,0 +1,12 @@
+build/
+.vcenv
+.claude/
+external/ViGEmClient/
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.dll
+*.exe
+.vs/

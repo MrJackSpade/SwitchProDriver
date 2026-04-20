@@ -1,0 +1,70 @@
+; SwitchProDriver.inx
+; UMDF2 HID upper filter for Nintendo Switch Pro Controller.
+; MVP: USB only, hardware ID HID\VID_057E&PID_2009.
+; Bluetooth support added via a second [Models] entry (see follow-up issue).
+
+[Version]
+Signature   = "$Windows NT$"
+Class       = HIDClass
+ClassGuid   = {745A17A0-74D3-11D0-B6FE-00A0C90F57DA}
+Provider    = %ManufacturerName%
+CatalogFile = SwitchProDriver.cat
+PnpLockdown = 1
+DriverVer   = ; stampinf
+
+[DestinationDirs]
+DefaultDestDir = 13
+UMDriverCopy   = 13
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+SwitchProDriver.dll = 1
+
+[Manufacturer]
+%ManufacturerName% = SwitchPro, NT$ARCH$.10.0...19041
+
+[SwitchPro.NT$ARCH$.10.0...19041]
+%SwitchPro.DeviceDesc% = SwitchPro_Install, HID\VID_057E&PID_2009
+
+; ---------- Install stack ----------
+
+[SwitchPro_Install.NT]
+CopyFiles = UMDriverCopy
+
+[SwitchPro_Install.NT.hw]
+AddReg = SwitchPro_AddReg_Hw
+
+[SwitchPro_AddReg_Hw]
+HKR,,"UpperFilters",0x00010000,"WUDFRd"
+
+[SwitchPro_Install.NT.Services]
+AddService = WUDFRd, 0x000001fa, WUDFRD_ServiceInstall
+
+[WUDFRD_ServiceInstall]
+DisplayName   = "Windows Driver Foundation - User-mode Driver Framework Reflector"
+ServiceType   = 1           ; SERVICE_KERNEL_DRIVER
+StartType     = 3           ; SERVICE_DEMAND_START
+ErrorControl  = 1           ; SERVICE_ERROR_NORMAL
+ServiceBinary = %12%\WUDFRd.sys
+
+[SwitchPro_Install.NT.Wdf]
+UmdfService              = SwitchProDriver, SwitchPro_UmdfService_Install
+UmdfServiceOrder         = SwitchProDriver
+UmdfKernelModeClientPolicy = AllowKernelModeClients
+UmdfImpersonationLevel   = Impersonation
+
+[SwitchPro_UmdfService_Install]
+UmdfLibraryVersion = 2.33.0
+ServiceBinary      = %13%\SwitchProDriver.dll
+
+[UMDriverCopy]
+SwitchProDriver.dll
+
+; ---------- Strings ----------
+
+[Strings]
+ManufacturerName     = "SwitchProDriver"
+DiskName             = "SwitchProDriver Installation Disk"
+SwitchPro.DeviceDesc = "Nintendo Switch Pro Controller (UMDF XInput filter)"
