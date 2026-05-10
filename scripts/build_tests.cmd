@@ -4,7 +4,7 @@ if errorlevel 1 (
   echo vcvars64.bat failed
   exit /b 1
 )
-set ROOT=c:\git\SwitchProDriver
+set ROOT=%~dp0..
 set VIGEM_INC=%ROOT%\external\ViGEmClient\include
 set VIGEM_LIB=%ROOT%\external\ViGEmClient\lib\release\x64\ViGEmClient.lib
 set OUT=%ROOT%\build\test

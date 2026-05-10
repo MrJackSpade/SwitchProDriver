@@ -13,7 +13,7 @@ rem Check for elevation and self-elevate if needed.
 net session >nul 2>&1
 if errorlevel 1 (
   echo Elevating...
-  powershell -NoProfile -Command "Start-Process -Verb RunAs -FilePath '%~f0' -ArgumentList '' -Wait"
+  powershell -NoProfile -Command "Start-Process -Verb RunAs -FilePath '%~f0' -Wait"
   exit /b 0
 )
 
