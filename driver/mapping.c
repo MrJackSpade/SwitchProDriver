@@ -1,21 +1,81 @@
 #include "common.h"
 #include <ViGEm/Common.h>
 
-static SHORT ScaleStickAxis(USHORT raw)
+VOID SwProDefaultCalibration(_Out_ PSWPRO_CALIBRATION Cal)
 {
-    // Pro Controller raw: 0..4095, center ~2048. XInput: -32768..32767.
-    LONG centered = (LONG)raw - SWPRO_STICK_CENTER;
-    if (centered > -SWPRO_STICK_DEADZONE && centered < SWPRO_STICK_DEADZONE) {
+    Cal->Left.X_Center = SWPRO_STICK_CENTER;
+    Cal->Left.Y_Center = SWPRO_STICK_CENTER;
+    Cal->Left.X_Below  = SWPRO_DEFAULT_STICK_TRAVEL;
+    Cal->Left.Y_Below  = SWPRO_DEFAULT_STICK_TRAVEL;
+    Cal->Left.X_Above  = SWPRO_DEFAULT_STICK_TRAVEL;
+    Cal->Left.Y_Above  = SWPRO_DEFAULT_STICK_TRAVEL;
+    Cal->Right = Cal->Left;
+}
+
+// Factory left-stick calibration: 9 bytes, packed nibbles, ordered max, center, min.
+VOID SwProParseFactoryLeftStickCal(_In_reads_bytes_(9) const UCHAR* d,
+                                   _Out_ PSWPRO_STICK_CAL Cal)
+{
+    USHORT x_above = (USHORT)(((d[1] & 0x0F) << 8) | d[0]);
+    USHORT y_above = (USHORT)((d[2] << 4) | (d[1] >> 4));
+    USHORT x_cen   = (USHORT)(((d[4] & 0x0F) << 8) | d[3]);
+    USHORT y_cen   = (USHORT)((d[5] << 4) | (d[4] >> 4));
+    USHORT x_below = (USHORT)(((d[7] & 0x0F) << 8) | d[6]);
+    USHORT y_below = (USHORT)((d[8] << 4) | (d[7] >> 4));
+    Cal->X_Center = x_cen;
+    Cal->Y_Center = y_cen;
+    Cal->X_Below  = x_below;
+    Cal->Y_Below  = y_below;
+    Cal->X_Above  = x_above;
+    Cal->Y_Above  = y_above;
+}
+
+// Factory right-stick calibration: 9 bytes, packed nibbles, ordered center, min, max.
+VOID SwProParseFactoryRightStickCal(_In_reads_bytes_(9) const UCHAR* d,
+                                    _Out_ PSWPRO_STICK_CAL Cal)
+{
+    USHORT x_cen   = (USHORT)(((d[1] & 0x0F) << 8) | d[0]);
+    USHORT y_cen   = (USHORT)((d[2] << 4) | (d[1] >> 4));
+    USHORT x_below = (USHORT)(((d[4] & 0x0F) << 8) | d[3]);
+    USHORT y_below = (USHORT)((d[5] << 4) | (d[4] >> 4));
+    USHORT x_above = (USHORT)(((d[7] & 0x0F) << 8) | d[6]);
+    USHORT y_above = (USHORT)((d[8] << 4) | (d[7] >> 4));
+    Cal->X_Center = x_cen;
+    Cal->Y_Center = y_cen;
+    Cal->X_Below  = x_below;
+    Cal->Y_Below  = y_below;
+    Cal->X_Above  = x_above;
+    Cal->Y_Above  = y_above;
+}
+
+static SHORT ScaleAxis(USHORT raw, USHORT center, USHORT below, USHORT above)
+{
+    LONG centered = (LONG)raw - (LONG)center;
+    LONG dz = (LONG)SWPRO_STICK_DEADZONE;
+
+    if (centered > -dz && centered < dz) {
         return 0;
     }
-    // Scale (~ 12-bit centered -> 16-bit signed). Using 16 preserves headroom for deadzone subtraction.
-    LONG scaled = centered * 16;
-    if (scaled > 32767) scaled = 32767;
+
+    LONG range, axis;
+    if (centered > 0) {
+        range = (LONG)above - dz;
+        axis  = centered - dz;
+    } else {
+        range = (LONG)below - dz;
+        axis  = centered + dz;  // negative
+    }
+    if (range < 1) range = 1;  // guard against pathological calibration
+
+    LONG scaled = axis * 32767 / range;
+    if (scaled >  32767) scaled =  32767;
     if (scaled < -32768) scaled = -32768;
     return (SHORT)scaled;
 }
 
-VOID SwProMapToXusb(_In_ const SWPRO_PARSED_INPUT* In, _Out_ XUSB_REPORT* Out)
+VOID SwProMapToXusb(_In_ const SWPRO_PARSED_INPUT* In,
+                    _In_ const SWPRO_CALIBRATION* Cal,
+                    _Out_ XUSB_REPORT* Out)
 {
     XUSB_REPORT_INIT(Out);
 
@@ -50,8 +110,8 @@ VOID SwProMapToXusb(_In_ const SWPRO_PARSED_INPUT* In, _Out_ XUSB_REPORT* Out)
     Out->bLeftTrigger  = (In->ButtonsLeft  & SWPRO_BTN_ZL) ? 255 : 0;
     Out->bRightTrigger = (In->ButtonsRight & SWPRO_BTN_ZR) ? 255 : 0;
 
-    Out->sThumbLX = ScaleStickAxis(In->LeftStickX);
-    Out->sThumbLY = ScaleStickAxis(In->LeftStickY);
-    Out->sThumbRX = ScaleStickAxis(In->RightStickX);
-    Out->sThumbRY = ScaleStickAxis(In->RightStickY);
+    Out->sThumbLX = ScaleAxis(In->LeftStickX,  Cal->Left.X_Center,  Cal->Left.X_Below,  Cal->Left.X_Above);
+    Out->sThumbLY = ScaleAxis(In->LeftStickY,  Cal->Left.Y_Center,  Cal->Left.Y_Below,  Cal->Left.Y_Above);
+    Out->sThumbRX = ScaleAxis(In->RightStickX, Cal->Right.X_Center, Cal->Right.X_Below, Cal->Right.X_Above);
+    Out->sThumbRY = ScaleAxis(In->RightStickY, Cal->Right.Y_Center, Cal->Right.Y_Below, Cal->Right.Y_Above);
 }

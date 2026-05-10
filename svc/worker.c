@@ -7,7 +7,9 @@
 #include "../driver/common.h"
 
 // Forward decl from driver/mapping.c
-VOID SwProMapToXusb(const SWPRO_PARSED_INPUT* In, XUSB_REPORT* Out);
+VOID SwProMapToXusb(const SWPRO_PARSED_INPUT* In,
+                    const SWPRO_CALIBRATION* Cal,
+                    XUSB_REPORT* Out);
 
 static void ReportStatus(StatusCallback cb, void* ctx, const char* msg)
 {
@@ -58,6 +60,25 @@ int WorkerRun(volatile LONG* StopFlag, StatusCallback cb, void* ctx)
             CloseHandle(dev);
             Sleep(500);
             continue;
+        }
+
+        // Read factory (and user, if present) stick calibration. On failure we
+        // still proceed with conservative defaults so the controller is usable.
+        SWPRO_CALIBRATION cal;
+        if (HidReadSwitchProCalibration(dev, &cal)) {
+            char msg[256];
+            _snprintf_s(msg, sizeof(msg), _TRUNCATE,
+                "Stick cal: L center=(%u,%u) range X[-%u,+%u] Y[-%u,+%u]; "
+                "R center=(%u,%u) range X[-%u,+%u] Y[-%u,+%u]",
+                cal.Left.X_Center,  cal.Left.Y_Center,
+                cal.Left.X_Below,   cal.Left.X_Above,
+                cal.Left.Y_Below,   cal.Left.Y_Above,
+                cal.Right.X_Center, cal.Right.Y_Center,
+                cal.Right.X_Below,  cal.Right.X_Above,
+                cal.Right.Y_Below,  cal.Right.Y_Above);
+            ReportStatus(cb, ctx, msg);
+        } else {
+            ReportStatus(cb, ctx, "Using default stick calibration (SPI read failed).");
         }
 
         // Attach virtual X360 pad.
@@ -115,7 +136,7 @@ int WorkerRun(volatile LONG* StopFlag, StatusCallback cb, void* ctx)
             // Pro Controller HID reports via ReadFile include the report ID as byte 0.
             if (got >= SWPRO_INPUT_REPORT_LEN && SwProParseReport30(buf, got, &parsed)) {
                 XUSB_REPORT r;
-                SwProMapToXusb(&parsed, &r);
+                SwProMapToXusb(&parsed, &cal, &r);
                 vigem_target_x360_update(vigem, pad, r);
             }
         }

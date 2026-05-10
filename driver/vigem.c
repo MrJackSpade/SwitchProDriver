@@ -46,8 +46,11 @@ VOID SwProVigemDetach(_In_ PSWPRO_DEVICE_CONTEXT Ctx)
 NTSTATUS SwProVigemSubmit(_In_ PSWPRO_DEVICE_CONTEXT Ctx, _In_ const SWPRO_PARSED_INPUT* In)
 {
     if (!Ctx->PadAttached) return STATUS_DEVICE_NOT_READY;
+    // Kernel driver path doesn't yet read SPI calibration; use conservative defaults.
+    SWPRO_CALIBRATION cal;
+    SwProDefaultCalibration(&cal);
     XUSB_REPORT rep;
-    SwProMapToXusb(In, &rep);
+    SwProMapToXusb(In, &cal, &rep);
     VIGEM_ERROR err = vigem_target_x360_update(Ctx->Vigem, Ctx->Pad, rep);
     return VIGEM_SUCCESS(err) ? STATUS_SUCCESS : STATUS_UNSUCCESSFUL;
 }

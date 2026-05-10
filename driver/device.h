@@ -37,4 +37,6 @@ VOID     SwProVigemDetach(_In_ PSWPRO_DEVICE_CONTEXT Ctx);
 NTSTATUS SwProVigemSubmit(_In_ PSWPRO_DEVICE_CONTEXT Ctx, _In_ const SWPRO_PARSED_INPUT* In);
 
 // From mapping.c (pure logic, linked in).
-VOID SwProMapToXusb(_In_ const SWPRO_PARSED_INPUT* In, _Out_ struct _XUSB_REPORT* Out);
+VOID SwProMapToXusb(_In_ const SWPRO_PARSED_INPUT* In,
+                    _In_ const SWPRO_CALIBRATION* Cal,
+                    _Out_ struct _XUSB_REPORT* Out);
