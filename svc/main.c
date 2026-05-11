@@ -107,6 +107,12 @@ static int InstallService(void)
     SERVICE_DESCRIPTIONW desc = { L"Translates Nintendo Switch Pro Controller HID input into a virtual XInput (Xbox 360) pad via ViGEmBus." };
     ChangeServiceConfig2W(svc, SERVICE_CONFIG_DESCRIPTION, &desc);
 
+    // Delay start so the Bluetooth HID stack is up before we try to open the controller.
+    // Without this, auto-start races the BT stack at boot: ReadFile returns a valid handle
+    // but never delivers reports, and our timeout loop sits idle forever.
+    SERVICE_DELAYED_AUTO_START_INFO delayed = { TRUE };
+    ChangeServiceConfig2W(svc, SERVICE_CONFIG_DELAYED_AUTO_START_INFO, &delayed);
+
     // Kick it off now as well.
     if (!StartServiceW(svc, 0, NULL)) {
         DWORD e = GetLastError();

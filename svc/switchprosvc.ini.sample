@@ -1,0 +1,24 @@
+; SwitchProSvc configuration.
+;
+; Active path:  %ProgramData%\SwitchProSvc\switchprosvc.ini
+; The installer seeds this file from the .sample on first install and never
+; overwrites it after that. Restart the service to apply edits:
+;   sc stop switchprosvc && sc start switchprosvc
+;
+; Missing keys fall back to defaults (no deadzone, position-mapped buttons).
+
+[Sticks]
+; Rescaling deadzone applied to the post-calibration XInput axis.
+; 0 = disabled (raw stick value passes through). 1..100 = percent of full deflection.
+; The hardware noise floor is already filtered separately; use this only if
+; your stick has visible drift or you want a larger dead area in games.
+LeftStickDeadzonePct=0
+RightStickDeadzonePct=0
+
+[Buttons]
+; 0 (default): position-mapped. The Pro Controller's BOTTOM face button is
+;              always XInput A regardless of the Nintendo label.
+; 1:           label-mapped. Pro A -> Xbox A, Pro B -> Xbox B, etc., even
+;              though the physical positions are mirrored. Equivalent to
+;              swapping A<->B and X<->Y at the output.
+SwapFaceButtons=0

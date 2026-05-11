@@ -1,8 +1,10 @@
 #include "worker.h"
 #include "hid_io.h"
+#include "config.h"
 
 #include <ViGEm/Client.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "../driver/common.h"
 
@@ -10,6 +12,37 @@
 VOID SwProMapToXusb(const SWPRO_PARSED_INPUT* In,
                     const SWPRO_CALIBRATION* Cal,
                     XUSB_REPORT* Out);
+
+// Rescaling deadzone on the post-calibration XInput axis. pct=0 disables.
+static SHORT ApplyAxisDeadzone(SHORT axis, int pct)
+{
+    if (pct <= 0) return axis;
+    LONG dz = (32767L * pct) / 100;
+    LONG a = (LONG)axis;
+    if (a > -dz && a < dz) return 0;
+    LONG range = 32767L - dz;
+    if (range < 1) range = 1;
+    LONG scaled = (a > 0)
+        ? ((a - dz) * 32767L) / range
+        : ((a + dz) * 32767L) / range;
+    if (scaled >  32767) scaled =  32767;
+    if (scaled < -32768) scaled = -32768;
+    return (SHORT)scaled;
+}
+
+static void ApplyButtonSwaps(XUSB_REPORT* r, const SVC_CONFIG* cfg)
+{
+    if (!cfg->SwapFaceButtons) return;
+    USHORT a = r->wButtons & XUSB_GAMEPAD_A;
+    USHORT b = r->wButtons & XUSB_GAMEPAD_B;
+    USHORT x = r->wButtons & XUSB_GAMEPAD_X;
+    USHORT y = r->wButtons & XUSB_GAMEPAD_Y;
+    r->wButtons &= ~(XUSB_GAMEPAD_A | XUSB_GAMEPAD_B | XUSB_GAMEPAD_X | XUSB_GAMEPAD_Y);
+    if (a) r->wButtons |= XUSB_GAMEPAD_B;
+    if (b) r->wButtons |= XUSB_GAMEPAD_A;
+    if (x) r->wButtons |= XUSB_GAMEPAD_Y;
+    if (y) r->wButtons |= XUSB_GAMEPAD_X;
+}
 
 static void ReportStatus(StatusCallback cb, void* ctx, const char* msg)
 {
@@ -36,6 +69,20 @@ static HANDLE WaitForController(volatile LONG* stop, StatusCallback cb, void* ct
 
 int WorkerRun(volatile LONG* StopFlag, StatusCallback cb, void* ctx)
 {
+    // Load user config (deadzones, button swaps). Defaults are zero/false.
+    SVC_CONFIG cfg;
+    wchar_t iniPath[MAX_PATH] = { 0 };
+    SvcConfigLoad(&cfg, iniPath, MAX_PATH);
+    {
+        char msg[512];
+        _snprintf_s(msg, sizeof(msg), _TRUNCATE,
+            "Config (%ls): LDeadzone=%d%% RDeadzone=%d%% SwapFaceButtons=%d",
+            iniPath[0] ? iniPath : L"<none>",
+            cfg.LeftStickDeadzonePct, cfg.RightStickDeadzonePct,
+            (int)cfg.SwapFaceButtons);
+        ReportStatus(cb, ctx, msg);
+    }
+
     // ViGEm client — single lifetime for the whole service run.
     PVIGEM_CLIENT vigem = vigem_alloc();
     if (!vigem) {
@@ -137,6 +184,11 @@ int WorkerRun(volatile LONG* StopFlag, StatusCallback cb, void* ctx)
             if (got >= SWPRO_INPUT_REPORT_LEN && SwProParseReport30(buf, got, &parsed)) {
                 XUSB_REPORT r;
                 SwProMapToXusb(&parsed, &cal, &r);
+                ApplyButtonSwaps(&r, &cfg);
+                r.sThumbLX = ApplyAxisDeadzone(r.sThumbLX, cfg.LeftStickDeadzonePct);
+                r.sThumbLY = ApplyAxisDeadzone(r.sThumbLY, cfg.LeftStickDeadzonePct);
+                r.sThumbRX = ApplyAxisDeadzone(r.sThumbRX, cfg.RightStickDeadzonePct);
+                r.sThumbRY = ApplyAxisDeadzone(r.sThumbRY, cfg.RightStickDeadzonePct);
                 vigem_target_x360_update(vigem, pad, r);
             }
         }

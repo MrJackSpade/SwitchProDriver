@@ -41,7 +41,7 @@ Builds `external/ViGEmClient/lib/release/x64/ViGEmClient.lib`, `build\test\vigem
 scripts\install_service.cmd
 ```
 
-Self-elevates, installs the service with `SERVICE_AUTO_START`, kicks it off immediately, and renames the virtual pad to "Switch Pro Controller" in `joy.cpl` (per-user registry entry).
+Self-elevates, installs the service with delayed auto-start (so the Bluetooth HID stack is up before we open the controller — required for reliable boot-time start), seeds a default config at `%ProgramData%\SwitchProSvc\switchprosvc.ini` if not already present, kicks the service off immediately, and renames the virtual pad to "Switch Pro Controller" in `joy.cpl` (per-user registry entry).
 
 Service management:
 ```cmd
@@ -55,7 +55,17 @@ Uninstall:
 scripts\uninstall_service.cmd
 ```
 
-Sweeps any orphaned virtual pads ViGEm may have left behind and restores the default joy.cpl name.
+Sweeps any orphaned virtual pads ViGEm may have left behind and restores the default joy.cpl name. The config at `%ProgramData%\SwitchProSvc\switchprosvc.ini` is left in place; delete it manually if you don't want it preserved across reinstall.
+
+## Configuration
+
+Runtime settings live at `%ProgramData%\SwitchProSvc\switchprosvc.ini` (seeded from [`svc/switchprosvc.ini.sample`](svc/switchprosvc.ini.sample) on install). The service reads it once at startup; restart to apply changes.
+
+| Key | Section | Default | Effect |
+|---|---|---|---|
+| `LeftStickDeadzonePct`  | `[Sticks]`  | `0` | Rescaling deadzone on the left stick, 0–100% of full deflection. Stacked on top of the hardware noise filter; only set it if you see drift or want a larger in-game dead area. |
+| `RightStickDeadzonePct` | `[Sticks]`  | `0` | Same, right stick. |
+| `SwapFaceButtons`       | `[Buttons]` | `0` | `0` = position-mapped (Pro bottom button → XInput A regardless of label). `1` = label-mapped (Pro A → XInput A; effectively swaps A↔B and X↔Y at the output). |
 
 ## Use
 
@@ -91,7 +101,8 @@ Physical-position mapping (bottom face button is always XInput A regardless of w
 ## Repository layout
 
 ```
-svc/          User-mode service (main.c, worker.c, hid_io.c + .h)
+svc/          User-mode service (main.c, worker.c, hid_io.c, config.c + .h,
+              and switchprosvc.ini.sample — the template seeded into %ProgramData%)
 driver/       Original UMDF2 driver sources — retained for reference.
               Pure-logic files (common.h, input.c, mapping.c) are shared with svc/.
 test/         vigem_smoke.c (ViGEm smoke test), input_test.c (XInput poller)

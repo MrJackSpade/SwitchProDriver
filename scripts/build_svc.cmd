@@ -11,13 +11,13 @@ set VIGEM_LIB=%ROOT%\external\ViGEmClient\lib\release\x64\ViGEmClient.lib
 set OUT=%ROOT%\build\svc
 if not exist "%OUT%" mkdir "%OUT%"
 
-set SRCS=%ROOT%\svc\main.c %ROOT%\svc\worker.c %ROOT%\svc\hid_io.c %ROOT%\driver\input.c %ROOT%\driver\mapping.c
+set SRCS=%ROOT%\svc\main.c %ROOT%\svc\worker.c %ROOT%\svc\hid_io.c %ROOT%\svc\config.c %ROOT%\driver\input.c %ROOT%\driver\mapping.c
 
 cl.exe /nologo /W3 /O2 /MT /D_CRT_SECURE_NO_WARNINGS ^
   /I"%VIGEM_INC%" /I"%ROOT%\svc" /I"%ROOT%\driver" ^
   %SRCS% ^
   /Fe:"%OUT%\switchprosvc.exe" /Fo:"%OUT%\\" ^
-  /link "%VIGEM_LIB%" SetupAPI.lib hid.lib Advapi32.lib User32.lib
+  /link "%VIGEM_LIB%" SetupAPI.lib hid.lib Advapi32.lib User32.lib Shlwapi.lib
 if errorlevel 1 exit /b 1
 
 dir "%OUT%\switchprosvc.exe"
