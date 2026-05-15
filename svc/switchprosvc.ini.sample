@@ -12,8 +12,8 @@
 ; 0 = disabled (raw stick value passes through). 1..100 = percent of full deflection.
 ; The hardware noise floor is already filtered separately; use this only if
 ; your stick has visible drift or you want a larger dead area in games.
-LeftStickDeadzonePct=3
-RightStickDeadzonePct=3
+LeftStickDeadzonePct=5
+RightStickDeadzonePct=5
 
 [Buttons]
 ; 0 (default): position-mapped. The Pro Controller's BOTTOM face button is

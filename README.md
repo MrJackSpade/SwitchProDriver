@@ -63,8 +63,8 @@ Runtime settings live at `%ProgramData%\SwitchProSvc\switchprosvc.ini` (seeded f
 
 | Key | Section | Default | Effect |
 |---|---|---|---|
-| `LeftStickDeadzonePct`  | `[Sticks]`  | `3` | Rescaling deadzone on the left stick, 0–100% of full deflection. Stacked on top of the hardware noise filter; the 3% default papers over typical drift without eating noticeable travel. Set to `0` to disable. |
-| `RightStickDeadzonePct` | `[Sticks]`  | `3` | Same, right stick. |
+| `LeftStickDeadzonePct`  | `[Sticks]`  | `5` | Rescaling deadzone on the left stick, 0–100% of full deflection. Stacked on top of the hardware noise filter; the 5% default papers over typical drift without eating noticeable travel. Set to `0` to disable. |
+| `RightStickDeadzonePct` | `[Sticks]`  | `5` | Same, right stick. |
 | `SwapFaceButtons`       | `[Buttons]` | `0` | `0` = position-mapped (Pro bottom button → XInput A regardless of label). `1` = label-mapped (Pro A → XInput A; effectively swaps A↔B and X↔Y at the output). |
 
 ## Use
